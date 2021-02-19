@@ -151,51 +151,55 @@ module.exports = {
             if (newRecette) {
                 if (ingredient) {
 
-                    var inc = 0;
 
-                    var bar = new Promise((resolve, reject) => {
-                        ingredient.forEach(async (element, index, array) => {
-                            var ingredientRet = await models.Ingredient.create({
-                                name: element.name,
-                                quantite: element.quantite,
-                                unite: element.unite
-                            });
+                    if (ingredient.length === 0) {
+                        return res.status(201).json({ 'success': 'Tout fonctionne', 'isCreated': true});
+                    } else {
+                        var inc = 0;
 
-                            if (ingredientRet) {
-                                idIngredients.push(ingredientRet);
-
-                                // Insertion dans RecetteIngredient
-                                var ingredientRecette = await newRecette.addIngredient(ingredientRet);
-                                if (ingredientRecette) {
-                                    inc++;
-
-                                    ingredientRecette.forEach((element) => {
-                                        addedRecetteIngredient.push(element.recette_id);
-                                    });
-
+                        var bar = new Promise((resolve, reject) => {
+                            ingredient.forEach(async (element, index, array) => {
+                                var ingredientRet = await models.Ingredient.create({
+                                    name: element.name,
+                                    quantite: element.quantite,
+                                    unite: element.unite
+                                });
+    
+                                if (ingredientRet) {
+                                    idIngredients.push(ingredientRet);
+    
+                                    // Insertion dans RecetteIngredient
+                                    var ingredientRecette = await newRecette.addIngredient(ingredientRet);
+                                    if (ingredientRecette) {
+                                        inc++;
+    
+                                        ingredientRecette.forEach((element) => {
+                                            addedRecetteIngredient.push(element.recette_id);
+                                        });
+    
+                                    } else {
+                                        return res.status(500).json({ 'success': 'RecetteIngredient non inséré.'});
+                                    }
                                 } else {
-                                    return res.status(500).json({ 'success': 'RecetteIngredient non inséré.'});
+                                    return res.status(500).json({ 'success': 'Ingrédient non inséré.'});
                                 }
-                            } else {
-                                return res.status(500).json({ 'success': 'Ingrédient non inséré.'});
-                            }
-
-                            if (inc === ingredient.length) {
-                                resolve();
-                            };
-
+    
+                                if (inc === ingredient.length) {
+                                    resolve();
+                                };
+    
+                            });
                         });
-                    });
-
-
-                    bar.then(() => {
-                        if (idIngredients.length == ingredient.length && addedRecetteIngredient.length == ingredient.length) {
-                            return res.status(201).json({ 'success': 'Tout fonctionne', 'isCreated': true});
-                        } else {
-                            return res.status(201).json({ 'success': 'Y a une couille quelque part '});
-                        }
-                    });
-
+    
+    
+                        bar.then(() => {
+                            if (idIngredients.length == ingredient.length && addedRecetteIngredient.length == ingredient.length) {
+                                return res.status(201).json({ 'success': 'Tout fonctionne', 'isCreated': true});
+                            } else {
+                                return res.status(201).json({ 'success': 'Y a une erreur'});
+                            }
+                        });
+                    }
                 }
             } else {
                 return res.status(404).json({ 'error': 'Message non créé.'});
@@ -450,49 +454,65 @@ module.exports = {
         ], 
         async function(getRecetteIngredient, getRecette) {
             console.log(getRecetteIngredient);
-            if (getRecetteIngredient) {
+            console.log(getRecette);
+            if (getRecetteIngredient || getRecette) {
 
-                var incremove = 0;
-
-                var promiseDeleteRecetteIngredient = new Promise((resolve, reject) => {
-                    getRecetteIngredient.forEach(async (element) => {
-                        var destroyRecetteIngredientLink = await models.RecetteIngredient.destroy({
-                            where: {ingredient_id: element.ingredient_id}
-                        });
-
-                        if (destroyRecetteIngredientLink) {
-                            var destroyUpdatedIngredient = await models.Ingredient.destroy({
-                                where: {id: element.ingredient_id}
-                            });
-
-                            if (destroyUpdatedIngredient) {
-                                incremove++;
-                            } else {
-                                return res.status(404).json({ 'error': 'Destruction de l ingredient est impossible.' });
-                            }
-                            
-                        } else {
-                            return res.status(404).json({ 'error': 'Destruction de recetteIngredient est impossible.' });
-                        }
-
-
-                        if (incremove == getRecetteIngredient.length) {
-                            resolve();
-                        }
-                    });
-                });
-
-                promiseDeleteRecetteIngredient.then(async () => {
+                // Si recetteIngredient est vide mais que la recette existe
+                if ((getRecetteIngredient && getRecetteIngredient.length === 0) && getRecette) {
                     var deletedRecette = await models.Recette.destroy({
                         where: {id: getRecette.id}
                     });
 
                     if (deletedRecette === 1) {
-                        return res.status(500).json({ 'error': 'Tout a été supprimé comme prévu'});
+                        return res.status(200).json({ 'success': true});
                     } else {
                         return res.status(404).json({ 'error': 'Recette non supprimée.'});
                     }
-                });
+                } else {
+                    var incremove = 0;
+
+                    var promiseDeleteRecetteIngredient = new Promise((resolve, reject) => {
+                        getRecetteIngredient.forEach(async (element) => {
+                            var destroyRecetteIngredientLink = await models.RecetteIngredient.destroy({
+                                where: {ingredient_id: element.ingredient_id}
+                            });
+    
+                            if (destroyRecetteIngredientLink) {
+                                var destroyUpdatedIngredient = await models.Ingredient.destroy({
+                                    where: {id: element.ingredient_id}
+                                });
+    
+                                if (destroyUpdatedIngredient) {
+                                    incremove++;
+                                } else {
+                                    return res.status(404).json({ 'error': 'Destruction de l ingredient est impossible.' });
+                                }
+                                
+                            } else {
+                                return res.status(404).json({ 'error': 'Destruction de recetteIngredient est impossible.' });
+                            }
+    
+    
+                            if (incremove == getRecetteIngredient.length) {
+                                resolve();
+                            }
+                        });
+                    });
+    
+                    promiseDeleteRecetteIngredient.then(async () => {
+                        var deletedRecette = await models.Recette.destroy({
+                            where: {id: getRecette.id}
+                        });
+    
+                        if (deletedRecette === 1) {
+                            return res.status(200).json({ 'success': true});
+                        } else {
+                            return res.status(404).json({ 'error': 'Recette non supprimée.'});
+                        }
+                    });
+                }
+
+
 
                 /*var destroyRecette = await models.Recette.destroy({
                     where: {id: getRecette.id}
