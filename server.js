@@ -21,7 +21,7 @@ server.use(function(req, res, next) {
 //configure routes
 server.get('/', function(req, res) {
     res.setHeader('Content-Type', 'text/html');
-    res.status(200).send('<h1>Yo frérot, bienvenue à bord batard. LOL</h1>');
+    res.status(200).send('<h1>Bienvenue à bord. </h1>');
 });
 
 server.use('/api/', apiRouter);
